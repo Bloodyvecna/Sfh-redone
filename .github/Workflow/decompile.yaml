@@ -1,0 +1,35 @@
+name: Decompile SWF
+
+on:
+  workflow_dispatch:
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download JPEXS FFDec
+        run: |
+          mkdir -p ffdec
+          curl -L -o ffdec/ffdec.zip "https://github.com/jindrapetrik/jpexs-decompiler/releases/latest/download/ffdec.zip"
+          unzip -q ffdec/ffdec.zip -d ffdec
+
+      - name: Export scripts and assets
+        run: |
+          mkdir -p out/scripts out/assets
+          java -jar ffdec/ffdec.jar -export script out/scripts sfh.swf
+          java -jar ffdec/ffdec.jar -export sprite,shape,image,sound out/assets sfh.swf
+
+      - name: Upload extracted output
+        uses: actions/upload-artifact@v4
+        with:
+          name: sfh-decompiled
+          path: out/
