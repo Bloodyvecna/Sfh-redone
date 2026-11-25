@@ -1,0 +1,50 @@
+name: Decompile SWF
+
+"on":
+  workflow_dispatch:
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify SWF exists
+        run: |
+          if [ ! -f "sfh.swf" ]; then
+            echo "Error: sfh.swf not found in repository root."
+            exit 1
+          fi
+          ls -lh sfh.swf
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Download latest JPEXS FFDec
+        run: |
+          mkdir -p ffdec
+          DOWNLOAD_URL=$(curl -s https://api.github.com/repos/jindrapetrik/jpexs-decompiler/releases/latest \
+            | grep -o '"browser_download_url": *"[^"]*\.zip"' \
+            | head -n 1 \
+            | cut -d '"' -f 4)
+          echo "Downloading from: $DOWNLOAD_URL"
+          curl -fSL -o ffdec/ffdec.zip "$DOWNLOAD_URL"
+          unzip -q ffdec/ffdec.zip -d ffdec
+          ls -la ffdec
+
+      - name: Export scripts and assets
+        run: |
+          mkdir -p out/scripts out/assets
+          java -jar ffdec/ffdec.jar -export script out/scripts sfh.swf
+          java -jar ffdec/ffdec.jar -export sprite,shape,image,sound out/assets sfh.swf
+
+      - name: Upload decompiled output
+        uses: actions/upload-artifact@v4
+        with:
+          name: sfh-decompiled
+          path: out/
+          if-no-files-found: warn
